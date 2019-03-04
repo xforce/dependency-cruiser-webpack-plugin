@@ -1,0 +1,26 @@
+{
+  "name": "dependency-cruiser-webpack-plugin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xforce/dependency-cruiser-webpack-plugin.git"
+  },
+  "author": "Alexander Guettler",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xforce/dependency-cruiser-webpack-plugin/issues"
+  },
+  "homepage": "https://github.com/xforce/dependency-cruiser-webpack-plugin#readme",
+  "dependencies": {
+    "dependency-cruiser": "^4.13.3",
+    "enhanced-resolve": "^4.1.0",
+    "loadash": "^1.0.0",
+    "pnp-webpack-plugin": "^1.3.1",
+    "semver-try-require": "^2.0.3"
+  }
+}
