@@ -16,17 +16,6 @@ class DependencyCruiserPlugin {
         this.compilationDone = false;
         this.dependency_check = null;
     }
-    printResults() {
-        const pBufferSize = 512;
-        const lNumberOfChunks = Math.ceil(this.dependencies.modules.length / pBufferSize);
-        let i = 0;
-        for (i = 0; i < lNumberOfChunks; i++) {
-            process.stdout.write(
-                this.dependencies.modules.substr(i * pBufferSize, pBufferSize),
-                "utf8"
-            );
-        }
-    }
     reportErrors(compilation) {
         const formatMessage = (violation, useColors) => {
             const colors = new chalk.constructor({
@@ -71,9 +60,6 @@ class DependencyCruiserPlugin {
                 this.worker.on('message', (data) => {
                     if (data.message === 'checking_done') {
                         this.dependencies = data.data;
-                        if (this.compilationDone) {
-                            this.printResults();
-                        }
                         resolve();
                     }
                 });
