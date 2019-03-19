@@ -15,20 +15,19 @@ class DependencyCruiserPlugin {
         this.options.validate = '.dependency-cruiser.js';
         this.compilationDone = false;
         this.dependency_check = null;
+        this.error_found = false;
     }
     reportErrors(compilation) {
-        const formatMessage = (violation, useColors) => {
-            const colors = new chalk.constructor({
-                enabled: useColors
-            });
+        const colors = new chalk.constructor({});
+        const formatMessage = (violation) => {
             const messageColor = violation.rule.severity === 'warn' ?
                 colors.bold.yellow :
                 colors.bold.red;
-            const fileAndNumberColor = colors.bold.cyan;
+            const fileColor = colors.bold.cyan;
             const codeColor = colors.grey;
 
             return [
-                fileAndNumberColor(violation.from) +
+                fileColor(violation.from) +
                 messageColor(':'),
                 codeColor(violation.rule.name + ': ') + '→ ' + violation.to
             ].join(os.EOL);
@@ -43,8 +42,10 @@ class DependencyCruiserPlugin {
             };
             if (violation.rule.severity === 'error') {
                 compilation.errors.push(formatted);
+                this.error_found = true;
             } else if (violation.rule.severity === 'warn') {
                 compilation.warnings.push(formatted);
+                this.error_found = true;
             }
         });
     }
@@ -72,6 +73,7 @@ class DependencyCruiserPlugin {
             this.compilationDone = false;
             this.compilationInProgress = true;
             this.dependencies = null;
+            this.error_found = false;
         });
         compiler.hooks.make.tapPromise('DependencyCruiserPlugin', (compilation) => {
             return new Promise((resolve) => {
@@ -92,6 +94,10 @@ class DependencyCruiserPlugin {
             this.compilationDone = true;
             if (this.worker) {
                 this.worker.postMessage('close');
+            }
+            const colors = new chalk.constructor({});
+            if (!this.error_found) {
+                console.info(colors.green('No dependency errors found'));
             }
         });
     }
