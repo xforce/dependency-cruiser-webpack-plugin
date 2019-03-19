@@ -34,6 +34,9 @@ class DependencyCruiserPlugin {
             ].join(os.EOL);
         };
         this.dependencies.summary.violations.forEach(violation => {
+            if (violation.to === '✖') {
+                return;
+            }
             const formatted = {
                 name: 'DependencyViolation',
                 message: formatMessage(violation, true),
