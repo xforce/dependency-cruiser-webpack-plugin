@@ -65,9 +65,10 @@ if (!isMainThread) {
                 });
                 resolve();
             });
+        } else if (data === 'close') {
+            parentPort.removeAllListeners('message');
+            parentPort.close();
+            parentPort.unref();
         }
     });
-    // parentPort.postMessage({
-    //     message: 'initialized'
-    // });
 }
