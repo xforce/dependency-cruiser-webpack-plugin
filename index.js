@@ -19,16 +19,16 @@ class DependencyCruiserPlugin {
     }
     reportErrors(compilation) {
         const colors = new chalk.constructor({});
-        const formatMessage = (violation) => {
-            const messageColor = violation.rule.severity === 'warn' ?
+        const formatMessage = violation => {
+            const messageColor =
+                violation.rule.severity === 'warn' ?
                 colors.bold.yellow :
                 colors.bold.red;
             const fileColor = colors.bold.cyan;
             const codeColor = colors.grey;
 
             return [
-                fileColor(violation.from) +
-                messageColor(':'),
+                fileColor(violation.from) + messageColor(':'),
                 codeColor(violation.rule.name + ': ') + '→ ' + violation.to
             ].join(os.EOL);
         };
@@ -38,13 +38,17 @@ class DependencyCruiserPlugin {
             }
             const formatted = {
                 name: 'DependencyViolation',
-                message: formatMessage(violation, true),
+                message: formatMessage(violation, true)
             };
             if (violation.rule.severity === 'error') {
-                compilation.errors.push(formatted);
+                if (compilation) {
+                    compilation.errors.push(formatted);
+                }
                 this.error_found = true;
             } else if (violation.rule.severity === 'warn') {
-                compilation.warnings.push(formatted);
+                if (compilation) {
+                    compilation.warnings.push(formatted);
+                }
                 this.error_found = true;
             }
         });
@@ -59,9 +63,9 @@ class DependencyCruiserPlugin {
             });
             this.worker.on('online', () => {
                 this.worker.postMessage('start_checking');
-            })
-            this.dependency_check = new Promise((resolve) => {
-                this.worker.on('message', (data) => {
+            });
+            this.dependency_check = new Promise(resolve => {
+                this.worker.on('message', data => {
                     if (data.message === 'checking_done') {
                         this.dependencies = data.data;
                         resolve();
@@ -69,35 +73,54 @@ class DependencyCruiserPlugin {
                 });
             });
         });
-        compiler.hooks.compile.tap('DependencyCruiserPlugin', (compilation) => {
+        compiler.hooks.compile.tap('DependencyCruiserPlugin', compilation => {
             this.compilationDone = false;
             this.compilationInProgress = true;
             this.dependencies = null;
             this.error_found = false;
         });
-        compiler.hooks.make.tapPromise('DependencyCruiserPlugin', (compilation) => {
-            return new Promise((resolve) => {
-                if (this.dependencies ||
-                    !this.dependency_check) {
-                    this.reportErrors(compilation);
-                    resolve();
-                } else {
-                    this.dependency_check.then(() => {
+        compiler.hooks.make.tapPromise('DependencyCruiserPlugin', compilation => {
+            return new Promise(resolve => {
+                if (this.options.fail_compile) {
+                    if (this.dependencies || !this.dependency_check) {
                         this.reportErrors(compilation);
                         resolve();
-                    });
+                    } else {
+                        this.dependency_check.then(() => {
+                            this.reportErrors(compilation);
+                            resolve();
+                        });
+                    }
+                } else {
+                    resolve();
                 }
             });
         });
-        compiler.hooks.done.tap('DependencyCruiserPlugin', (_stats) => {
+        compiler.hooks.done.tap('DependencyCruiserPlugin', _stats => {
             this.compilationInProgress = false;
             this.compilationDone = true;
             if (this.worker) {
                 this.worker.postMessage('close');
             }
             const colors = new chalk.constructor({});
-            if (!this.error_found) {
-                console.info(colors.green('No dependency errors found'));
+            if (this.options.fail_compile) {
+                if (!this.error_found) {
+                    console.info(colors.green('No dependency errors found'));
+                }
+            } else {
+                if (this.dependencies || !this.dependency_check) {
+                    this.reportErrors();
+                    if (!this.error_found) {
+                        console.info(colors.green('No dependency errors found'));
+                    }
+                } else {
+                    this.dependency_check.then(() => {
+                        this.reportErrors();
+                        if (!this.error_found) {
+                            console.info(colors.green('No dependency errors found'));
+                        }
+                    });
+                }
             }
         });
     }
