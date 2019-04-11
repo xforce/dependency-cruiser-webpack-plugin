@@ -1,10 +1,10 @@
 process.env.FORCE_COLOR = 1;
 const glob = require('glob');
 const _get = require('lodash/get');
-const parseTSConfig = require('./dependency-cruiser-support/parseTSConfig');
-const getResolveConfig = require('./dependency-cruiser-support/getResolveConfig');
-const validateFileExistence = require('./dependency-cruiser-support/utl/validateFileExistence');
-const normalizeOptions = require('./dependency-cruiser-support/normalizeOptions');
+const parseTSConfig = require('dependency-cruiser/src/cli/parseTSConfig');
+const getResolveConfig = require('dependency-cruiser/src/cli/getResolveConfig');
+const validateFileExistence = require('dependency-cruiser/src/cli/utl/validateFileExistence');
+const normalizeOptions = require('dependency-cruiser/src/cli/normalizeOptions');
 const {
     isMainThread,
     parentPort,
@@ -13,7 +13,11 @@ const {
 
 function extractResolveOptions(pOptions) {
     let lResolveOptions = {};
-    const lWebPackConfigFileName = _get(pOptions, 'ruleSet.options.webpackConfig.fileName', null);
+    const lWebPackConfigFileName = _get(
+        pOptions,
+        'ruleSet.options.webpackConfig.fileName',
+        null
+    );
 
     if (lWebPackConfigFileName) {
         lResolveOptions = getResolveConfig(
@@ -27,7 +31,11 @@ function extractResolveOptions(pOptions) {
 
 function extractTSConfigOptions(pOptions) {
     let lRetval = {};
-    const lTSConfigFileName = _get(pOptions, "ruleSet.options.tsConfig.fileName", null);
+    const lTSConfigFileName = _get(
+        pOptions,
+        'ruleSet.options.tsConfig.fileName',
+        null
+    );
 
     if (lTSConfigFileName) {
         lRetval = parseTSConfig(lTSConfigFileName);
@@ -55,10 +63,13 @@ function runCruise(pFileDirArray, pOptions) {
 module.exports = runCruise;
 
 if (!isMainThread) {
-    parentPort.on('message', (data) => {
+    parentPort.on('message', data => {
         if (data === 'start_checking') {
-            new Promise((resolve) => {
-                const dependencies = runCruise(workerData.directories, workerData.options);
+            new Promise(resolve => {
+                const dependencies = runCruise(
+                    workerData.directories,
+                    workerData.options
+                );
                 parentPort.postMessage({
                     message: 'checking_done',
                     data: dependencies
