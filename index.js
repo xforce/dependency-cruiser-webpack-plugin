@@ -64,13 +64,23 @@ class DependencyCruiserPlugin {
             this.worker.on('online', () => {
                 this.worker.postMessage('start_checking');
             });
+            this.worker.on('exit', () => {
+                this.worker = null;
+            });
+            this.worker.on('error', () => {
+                this.worker = null;
+            });
             this.dependency_check = new Promise(resolve => {
-                this.worker.on('message', data => {
-                    if (data.message === 'checking_done') {
-                        this.dependencies = data.data;
-                        resolve();
-                    }
-                });
+                if (this.worker) {
+                    this.worker.on('message', data => {
+                        if (data.message === 'checking_done') {
+                            this.dependencies = data.data;
+                            resolve();
+                        }
+                    });
+                } else {
+                    console.error('Worker died before dependency check has started');
+                }
             });
         });
         compiler.hooks.compile.tap('DependencyCruiserPlugin', compilation => {
