@@ -16,6 +16,7 @@ class DependencyCruiserPlugin {
         this.compilationDone = false;
         this.dependency_check = null;
         this.error_found = false;
+        this.restartOnExit = false;
     }
     reportErrors(compilation) {
         const colors = new chalk.constructor({});
@@ -53,35 +54,48 @@ class DependencyCruiserPlugin {
             }
         });
     }
-    apply(compiler) {
-        compiler.hooks.beforeCompile.tap('DependencyCruiserPlugin', () => {
-            if (this.worker) {
-                this.worker.postMessage('close');
+    startWorker() {
+        this.worker = new Worker(path.join(__dirname, 'checker.js'), {
+            workerData: this.options
+        });
+        this.worker.on('online', () => {
+            this.worker.postMessage('start_checking');
+        });
+        this.worker.on('exit', () => {
+            this.worker = null;
+            this.dependency_check = null;
+            if (this.restartOnExit) {
+                this.restartOnExit = false;
+                return new Promise(() => {
+                    this.startWorker();
+                });
             }
-            this.worker = new Worker(path.join(__dirname, 'checker.js'), {
-                workerData: this.options
-            });
-            this.worker.on('online', () => {
-                this.worker.postMessage('start_checking');
-            });
-            this.worker.on('exit', () => {
-                this.worker = null;
-            });
-            this.worker.on('error', () => {
-                this.worker = null;
-            });
-            this.dependency_check = new Promise(resolve => {
-                if (this.worker) {
-                    this.worker.on('message', data => {
-                        if (data.message === 'checking_done') {
-                            this.dependencies = data.data;
-                            resolve();
-                        }
-                    });
-                } else {
-                    console.error('Worker died before dependency check has started');
-                }
-            });
+        });
+        this.worker.on('error', () => {
+            this.worker = null;
+            this.dependency_check = null;
+        });
+        this.dependency_check = new Promise(resolve => {
+            if (this.worker) {
+                this.worker.on('message', data => {
+                    if (data.message === 'checking_done') {
+                        this.dependencies = data.data;
+                        resolve();
+                    }
+                });    
+            } else {
+                console.error('Worker died before dependency check has started');
+            }
+        });
+    }
+    apply(compiler) {
+        compiler.hooks.thisCompilation.tap('DependencyCruiserPlugin', () => {
+            if (this.worker) {
+                this.restartOnExit = true;
+                this.worker.postMessage('close');
+                return;
+            }
+            this.startWorker();
         });
         compiler.hooks.compile.tap('DependencyCruiserPlugin', compilation => {
             this.compilationDone = false;
